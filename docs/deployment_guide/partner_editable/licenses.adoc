@@ -1,3 +1,5 @@
 // Include details about any licenses and how to sign up. Provide links as appropriate.
 
+This Partner Solution requires a license for {partner-product-short-name} Enterprise Edition. To use the Partner Solution in your production environment, apply for a license by sending an email to inquiry@vesoft.com. When you launch the Partner Solution, place the license key in an Amazon Simple Storage Service (Amazon S3) bucket and specify its location. If you don't have a license, the Partner Solution deploys with a trial license. The trial license gives you three days of free usage in a nonproduction environment. After this time, you can upgrade to a production license. For instructions, refer to https://docs.nebula-graph.io/3.1.0/4.deployment-and-installation/deploy-license/#renew_a_nebula_graph_enterprise_edition_license[Renew a Nebula Graph Enterprise Edition license^].
+
 There is no cost to use this Partner Solution, but you will be billed for any AWS services or resources that this Partner Solution deploys. For more information, refer to the https://fwd.aws/rA69w?[AWS Partner Solution General Information Guide^].

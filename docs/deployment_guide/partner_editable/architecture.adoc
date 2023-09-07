@@ -3,26 +3,33 @@
 Deploying this Partner Solution with default parameters builds the following {partner-product-short-name} environment in the
 AWS Cloud.
 
-// Replace this example diagram with your own. Follow our wiki guidelines: https://w.amazon.com/bin/view/AWS_Quick_Starts/Process_for_PSAs/#HPrepareyourarchitecturediagram. Upload your source PowerPoint file to the GitHub {deployment name}/docs/images/ directory in its repository.
-
 [#architecture1]
 .Partner Solution architecture for {partner-product-short-name} on AWS
-image::../docs/deployment_guide/images/architecture_diagram.png[Architecture]
-
+image::../docs/deployment_guide/images/vesoft-nebula-graph-architecture-diagram.png[Architecture]
 As shown in <<architecture1>>, this Partner Solution sets up the following:
 
-* A highly available architecture that spans two Availability Zones.*
+* A highly available architecture that spans three Availability Zones.*
 * A virtual private cloud (VPC) configured with public and private subnets, according to AWS
 best practices, to provide you with your own virtual network on AWS.*
+* An internet gateway to allow internet access for bastion hosts (not shown).*
+* A Network Load Balancer for balancing incoming traffic across multiple hosts.*
+
 * In the public subnets:
-** Managed network address translation (NAT) gateways to allow outbound
-internet access for resources in the private subnets.*
-** A Linux bastion host in an Auto Scaling group to allow inbound Secure
-Shell (SSH) access to Amazon Elastic Compute Cloud (Amazon EC2) instances in public and private subnets.*
+
+** Managed NAT gateways to allow outbound internet access for resources in the private subnets.*
+** A Linux bastion host to allow inbound SSH (Secure Shell) access to Amazon Elastic Compute Cloud (Amazon EC2) instances in public and private subnets.*
+
 * In the private subnets:
-** <item>.
-** <item>.
-// Add bullet points for any additional components that are included in the deployment. Ensure that the additional components are shown in the architecture diagram. End each bullet with a period.
-* <describe any additional components>.
+
+** An online analytical processing (OLAP) and visualization service, which is supported by a Linux workbench host. The NebulaGraph environment tools, such as Explorer, Dashboard, Analytics, and Exchange, are deployed into the workbench host.
+** The {partner-product-short-name} graph service, which is supported by `graphd` processes. Each `graphd` process runs in one subnet.
+** The {partner-product-short-name} storage service, which is supported by `storaged` processes. The `storaged` processes are distributed in the subnets automatically.
+** An Amazon Elastic Block Store (Amazon EBS) storage volume for the EC2 instances in each subnet.
 
 [.small]#* The template that deploys this Partner Solution into an existing VPC skips the components marked by asterisks and prompts you for your existing VPC configuration.#
+
+//TODO Troy, I moved the workbench host from Availability Zone 2 over to Availability Zone 1, since that seemed the likely intention. Is that correct?
+
+//TODO Troy, I deleted the bullet for the Explorer server in the public subnets. Did you want to keep it there? (If so, we need to add that server to the diagram, too.) 
+
+//TODO Troy, I restored the bullet for the storage service. It was deleted in the PR. Was that intentional? (If so, we need to delete the storage service and resource icons from the diagram, too.)

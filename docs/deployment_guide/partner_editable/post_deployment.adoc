@@ -1,3 +1,12 @@
 // Include any postdeployment steps here, such as steps necessary to test that the deployment was successful. If there are no postdeployment steps, leave this file empty.
 
 == Postdeployment steps
+
+See the following best practices:
+
+* https://docs.nebula-graph.io/3.1.0/8.service-tuning/2.graph-modeling/[Graph data modeling suggestions^]
+* https://docs.nebula-graph.io/3.1.0/8.service-tuning/3.system-design/[System design suggestions^]
+* https://docs.nebula-graph.io/3.1.0/8.service-tuning/super-node/[Processing super vertices^]
+* https://docs.nebula-graph.io/3.1.0/8.service-tuning/practice/[Other best practices^]
+
+Also see the https://docs.nebula-graph.io/3.2.0/[{partner-product-short-name} documentation^].
