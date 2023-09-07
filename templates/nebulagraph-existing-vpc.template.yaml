@@ -236,7 +236,7 @@ Parameters:
     AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
     ConstraintDescription: The S3 bucket name can include numbers, lowercase letters,
       and hyphens (-), but it cannot start or end with a hyphen.
-    Default: aws-quickstart
+    Default: aws-ia-us-east-1
     Description: Name of the S3 bucket for your copy of the deployment assets. Keep the default
       name unless you are customizing the template. Changing the name updates code
       references to point to a new location.
@@ -247,7 +247,7 @@ Parameters:
       hyphens (-), underscores (_), periods (.), asterisks (*), single quotes ('),
       open parenthesis ((), close parenthesis ()), and forward slashes (/). End the
       prefix with a forward slash.
-    Default: quickstart-vesoft-nebula-graph-cloud/
+    Default: cfn-ps-vesoft-nebula-graph-cloud/
     Description: S3 key prefix that is used to simulate a folder for your copy of the
       deployment assets. Keep the default prefix unless you are customizing
       the template. Changing the prefix updates code references to point to
