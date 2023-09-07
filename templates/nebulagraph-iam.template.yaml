@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Deploys IAM roles and policies required for the Nebulagraph Quick Start. (qs-1tb8feequ)
+Metadata:
+  QSLint:
+    Exclusions: [W9002, W9003, W9004, W9006]
+Resources:
+  NebulaGraphIAMRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyActionWildcard
+          ignore_reasons:
+            EIAMPolicyActionWildcard: This is by design.
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - !Sub ec2.${AWS::URLSuffix}
+            Action:
+              - sts:AssumeRole
+      Path: /
+      Policies:
+        - PolicyName: nebulagraph-policy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - ec2:DescribeInstances
+                - ec2:DescribeInstanceAttribute
+                - ec2:DescribeAddresses
+                - ec2:DescribeAddressesAttribute
+                - ec2:DescribeSecurityGroups
+                - ec2:DescribeNetworkInterfaceAttribute
+              Resource: !Sub arn:${AWS::Partition}:ec2:::*/*
+            - Effect: Allow
+              Action:
+                - s3:GetObjectVersion
+                - s3:GetEncryptionConfiguration
+                - s3:GetObject
+                - s3:PutObject
+                - s3:RestoreObject
+              Resource: !Sub arn:${AWS::Partition}:s3:::*/*
+            - Effect: Allow
+              Action:
+                - aps:RemoteWrite
+              Resource: !Sub arn:${AWS::Partition}:aps:::*/*
+      ManagedPolicyArns:
+        - !Sub 'arn:${AWS::Partition}:iam::aws:policy/AmazonSSMManagedInstanceCore'
+  NebulaGraphIAMProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref 'NebulaGraphIAMRole'
+Outputs:
+  NebulaGraphIAMRole:
+    Value: !Ref NebulaGraphIAMRole
+  NebulaGraphIAMRoleArn:
+    Value: !GetAtt NebulaGraphIAMRole.Arn
+  NebulaGraphIAMProfile:
+    Value: !Ref NebulaGraphIAMProfile

@@ -1,0 +1,361 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template is used for setting up Storage nodes.(qs-1t9ums4lq)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+Parameters:
+  DeploymentID:
+    Description: The Deployment ID
+    Type: String
+  PrivateSubnet1ID:
+    Description: ID of existing private subnet 1 for Storage nodes.
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2ID:
+    Description: ID of existing private subnet 2 for the Storage nodes.
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet3ID:
+    Description: ID of existing private subnet 3 for the Storage nodes.
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroupID:
+    Description: ID of your existing SecurityGroup for deployment.
+    Type: AWS::EC2::SecurityGroup::Id
+  IAMRoleName:
+    Description: Name of the NebulaGraph IAM Role.
+    Type: String
+  IAMProfileID:
+    Description: ID of the NebulaGraph IAM Profile.
+    Type: String
+  KeyPairName:
+    Description: Name of an existing EC2 key pair. All instances will launch with
+      this key pair.
+    Type: AWS::EC2::KeyPair::KeyName
+  LicenseLink:
+    Description: For testing you don't need to fill it, or you can visit https://www.nebula-graph.io/contact to get a enterprise license.
+    Type: String
+  StorageInstanceType:
+    Description: Type of EC2 instance for the Storage nodes.
+    Type: String
+    Default: c5.large
+    AllowedValues:
+      - c5.large
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
+      - c5.9xlarge
+      - c5.12xlarge
+      - c5.18xlarge
+      - c5.24xlarge
+      - c5a.large
+      - c5a.xlarge
+      - c5a.2xlarge
+      - c5a.4xlarge
+      - c5a.8xlarge
+      - c5a.12xlarge
+      - c5a.16xlarge
+      - c5a.24xlarge
+      - c6a.large
+      - c6a.xlarge
+      - c6a.2xlarge
+      - c6a.4xlarge
+      - c6a.8xlarge
+      - c6a.12xlarge
+      - c6a.16xlarge
+      - c6a.24xlarge
+      - c6a.32xlarge
+      - c6a.48xlarge
+      - c6i.large
+      - c6i.xlarge
+      - c6i.2xlarge
+      - c6i.4xlarge
+      - c6i.8xlarge
+      - c6i.12xlarge
+      - c6i.16xlarge
+      - c6i.24xlarge
+      - c6i.32xlarge
+      - c6i.metal
+  StorageNodeCount:
+    AllowedValues:
+      - 1
+      - 3
+      - 5
+      - 7
+    Default: 1
+    Description: Number of Storage nodes.
+    Type: Number
+  NetworkInterface1ID:
+    Description: The ENI Physical ID of Storage Node 1.
+    Type: String
+  NetworkInterface2ID:
+    Description: The ENI Physical ID of Storage Node 2.
+    Type: String
+  NetworkInterface3ID:
+    Description: The ENI Physical ID of Storage Node 3.
+    Type: String
+  VolumeSize:
+    Description: EBS Volume Size (data) to be attached to node in GBs.
+    Type: Number
+    Default: 32
+    MinValue: 32
+    MaxValue: 16384
+  VolumeType:
+    Description: EBS Volume Type (data) to be attached to node in GBs [gp2,gp3,io1,io2].
+    Type: String
+    Default: gp2
+    AllowedValues:
+      - gp2
+      - gp3
+      - io1
+      - io2
+  MetaEndpoints:
+    Description: The endpoints of Meta nodes, separated by comma ','.
+    Type: String
+  NebulaGraphVersion:
+    Description: NebulaGraph version.
+    Type: String
+    Default: 3.1.3
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: aws-quickstart
+    Description: S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/.]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slashes (/).
+    Default: quickstart-nebulagraph-cluster/
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slashes (/).
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: Amazon Region where the Quick Start S3 bucket (QSS3BucketName) is
+      hosted. If you use your own bucket, you must specify this value.
+    Type: String
+Conditions:
+  MoreThan3StorageNodesCondition: !Or
+    - !Equals [!Ref StorageNodeCount, '3']
+    - !Equals [!Ref StorageNodeCount, '5']
+    - !Equals [!Ref StorageNodeCount, '7']
+  MoreThan5StorageNodesCondition: !Or
+    - !Equals [!Ref StorageNodeCount, '5']
+    - !Equals [!Ref StorageNodeCount, '7']
+  MoreThan7StorageNodesCondition: !Equals [!Ref StorageNodeCount, '7']
+Resources:
+  StorageInstance1:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet1ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '1'
+        NetworkInterfaceID: !Ref NetworkInterface1ID
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance2:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan3StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet2ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '2'
+        NetworkInterfaceID: !Ref NetworkInterface2ID
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance3:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan3StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet3ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '3'
+        NetworkInterfaceID: !Ref NetworkInterface3ID
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance4:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan5StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet1ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '4'
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance5:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan5StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet2ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '5'
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance6:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan7StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet3ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '6'
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+  StorageInstance7:
+    Type: AWS::CloudFormation::Stack
+    Condition: MoreThan7StorageNodesCondition
+    Properties:
+      TemplateURL: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/storage.template.yaml'
+      Parameters:
+        DeploymentID: !Ref DeploymentID
+        PrivateSubnetID: !Ref PrivateSubnet1ID
+        SecurityGroupID: !Ref SecurityGroupID
+        IAMRoleName: !Ref IAMRoleName
+        IAMProfileID: !Ref IAMProfileID
+        KeyPairName: !Ref KeyPairName
+        LicenseLink: !Ref LicenseLink
+        InstanceType: !Ref StorageInstanceType
+        VolumeSize: !Ref VolumeSize
+        VolumeType: !Ref VolumeType
+        MetaEndpoints: !Ref MetaEndpoints
+        StorageNodeIndex: '7'
+        NebulaGraphVersion: !Ref NebulaGraphVersion
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+Outputs:
+  StorageInstance1ID:
+    Description: The Instance ID of Storage Node 1
+    Value: !GetAtt StorageInstance1.Outputs.InstanceID
+  StorageInstance1PrivateIP:
+    Description: Private IP Address of Storage Node 1
+    Value: !GetAtt StorageInstance1.Outputs.PrivateIp
+  StorageInstance2ID:
+    Description: The Instance ID of Storage Node 2
+    Condition: MoreThan3StorageNodesCondition
+    Value: !GetAtt StorageInstance2.Outputs.InstanceID
+  StorageInstance2PrivateIP:
+    Description: Private IP Address of Storage Node 2
+    Condition: MoreThan3StorageNodesCondition
+    Value: !GetAtt StorageInstance2.Outputs.PrivateIp
+  StorageInstance3ID:
+    Description: The Instance ID of Storage Node 3
+    Condition: MoreThan3StorageNodesCondition
+    Value: !GetAtt StorageInstance3.Outputs.InstanceID
+  StorageInstance3PrivateIP:
+    Description: Private IP Address of Storage Node 3
+    Condition: MoreThan3StorageNodesCondition
+    Value: !GetAtt StorageInstance3.Outputs.PrivateIp
+  StorageInstance4ID:
+    Description: The Instance ID of Storage Node 4
+    Condition: MoreThan5StorageNodesCondition
+    Value: !GetAtt StorageInstance4.Outputs.InstanceID
+  StorageInstance4PrivateIP:
+    Description: Private IP Address of Storage Node 4
+    Condition: MoreThan5StorageNodesCondition
+    Value: !GetAtt StorageInstance4.Outputs.PrivateIp
+  StorageInstance5ID:
+    Description: The Instance ID of Storage Node 5
+    Condition: MoreThan5StorageNodesCondition
+    Value: !GetAtt StorageInstance5.Outputs.InstanceID
+  StorageInstance5PrivateIP:
+    Description: Private IP Address of Storage Node 5
+    Condition: MoreThan5StorageNodesCondition
+    Value: !GetAtt StorageInstance5.Outputs.PrivateIp
+  StorageInstance6ID:
+    Description: The Instance ID of Storage Node 6
+    Condition: MoreThan7StorageNodesCondition
+    Value: !GetAtt StorageInstance6.Outputs.InstanceID
+  StorageInstance6PrivateIP:
+    Description: Private IP Address of Storage Node 6
+    Condition: MoreThan7StorageNodesCondition
+    Value: !GetAtt StorageInstance6.Outputs.PrivateIp
+  StorageInstance7ID:
+    Description: The Instance ID of Storage Node 7
+    Condition: MoreThan7StorageNodesCondition
+    Value: !GetAtt StorageInstance7.Outputs.InstanceID
+  StorageInstance7PrivateIP:
+    Description: Private IP Address of Storage Node 7
+    Condition: MoreThan7StorageNodesCondition
+    Value: !GetAtt StorageInstance7.Outputs.PrivateIp
+

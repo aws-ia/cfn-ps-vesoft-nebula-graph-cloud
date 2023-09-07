@@ -1,0 +1,48 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template is used for setting up Security Groups. (qs-1t9ums4k9)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network configuration
+        Parameters:
+          - VPCID
+    ParameterLabels:
+      VPCID:
+        default: VPC ID
+Parameters:
+  VPCID:
+    Description:
+      VPC ID of your existing Virtual Private Cloud (VPC) where you want to deploy NebulaGraph.
+    Type: AWS::EC2::VPC::Id
+Resources:
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow access to NebulaGraph port.
+      VpcId: !Ref VPCID
+      SecurityGroupIngress: []
+      SecurityGroupEgress: []
+  SecurityGroupIngressInternal:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow all inbound communications from the same SecurityGroup
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SecurityGroup
+  SecurityGroupEgressAll:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      Description: Allow all outbound communications
+      GroupId: !Ref SecurityGroup
+      IpProtocol: -1
+      CidrIp: 0.0.0.0/0
+Outputs:
+  SecurityGroupID:
+    Description: NebulaGraph Security Group
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-SecurityGroup"

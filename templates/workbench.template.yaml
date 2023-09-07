@@ -1,0 +1,306 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description:  This template is used for setting up nebula workbench node.(qs-1t9ums4mn)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+Parameters:
+  DeploymentID:
+    Description: The Deployment ID
+    Type: String
+  KeyPairName:
+    Description: Name of an existing EC2 key pair. All instances will launch with
+      this key pair.
+    Type: AWS::EC2::KeyPair::KeyName
+  LicenseLink:
+    Description: For testing you don't need to fill it, or you can visit https://www.nebula-graph.io/contact to get a enterprise license.
+    Type: String
+  IAMRoleName:
+    Description: Name of the NebulaGraph IAM Role.
+    Type: String
+  IAMRoleArn:
+    Description: Arn of the NebulaGraph IAM Role.
+    Type: String
+  IAMProfileID:
+    Description: ID of the NebulaGraph IAM Profile.
+    Type: String
+  InstanceType:
+    Description: Type of EC2 instance for the workbench instance.
+    Type: String
+    Default: t3.medium
+    AllowedValues:
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m6i.large
+      - m6i.xlarge
+      - m6i.2xlarge
+      - m6i.4xlarge
+      - m6i.8xlarge
+      - m6i.12xlarge
+      - m6i.16xlarge
+      - m6i.24xlarge
+      - m6i.32xlarge
+      - m6i.metal
+      - m6a.large
+      - m6a.xlarge
+      - m6a.2xlarge
+      - m6a.4xlarge
+      - m6a.8xlarge
+      - m6a.12xlarge
+      - m6a.16xlarge
+      - m6a.24xlarge
+      - m6a.32xlarge
+      - m6a.48xlarge
+      - m5a.large
+      - m5a.xlarge
+      - m5a.2xlarge
+      - m5a.4xlarge
+      - m5a.8xlarge
+      - m5a.12xlarge
+      - m5a.16xlarge
+      - m5a.24xlarge
+      - m5n.large
+      - m5n.xlarge
+      - m5n.2xlarge
+      - m5n.4xlarge
+      - m5n.8xlarge
+      - m5n.12xlarge
+      - m5n.16xlarge
+      - m5n.24xlarge
+      - m5n.metal
+      - m5zn.large
+      - m5zn.xlarge
+      - m5zn.2xlarge
+      - m5zn.3xlarge
+      - m5zn.6xlarge
+      - m5zn.12xlarge
+      - m5zn.metal
+      - r5a.large
+      - r5a.xlarge
+      - r5a.2xlarge
+      - r5a.4xlarge
+      - r5a.8xlarge
+      - r5a.12xlarge
+      - r5a.16xlarge
+      - r5a.24xlarge
+      - r6i.large
+      - r6i.xlarge
+      - r6i.2xlarge
+      - r6i.4xlarge
+      - r6i.8xlarge
+      - r6i.12xlarge
+      - r6i.16xlarge
+      - r6i.24xlarge
+      - r6i.32xlarge
+      - r6i.metal
+  QSS3BucketName:
+    AllowedPattern: ^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$
+    ConstraintDescription: Quick Start bucket name can include numbers, lowercase
+      letters, uppercase letters, and hyphens (-). It cannot start or end with a hyphen
+      (-).
+    Default: aws-quickstart
+    Description: S3 bucket name for the Quick Start assets. This string can include
+      numbers, lowercase letters, uppercase letters, and hyphens (-). It cannot start
+      or end with a hyphen (-).
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: ^[0-9a-zA-Z-/.]*$
+    ConstraintDescription: Quick Start key prefix can include numbers, lowercase letters,
+      uppercase letters, hyphens (-), and forward slashes (/).
+    Default: quickstart-nebulagraph-cluster/
+    Description: S3 key prefix for the Quick Start assets. Quick Start key prefix
+      can include numbers, lowercase letters, uppercase letters, hyphens (-), and
+      forward slashes (/).
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: Amazon Region where the Quick Start S3 bucket (QSS3BucketName) is
+      hosted. If you use your own bucket, you must specify this value.
+    Type: String
+  SubnetID:
+    Description: ID of existing private subnet for the storaged.
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroupID:
+    Description: ID of your existing SecurityGroup for deployment.
+    Type: AWS::EC2::SecurityGroup::Id
+Mappings:
+  AWSRegionArch2AMI:
+    ap-northeast-1:
+      HVM64: ami-0f8048fa3e3b9e8ff
+    ap-northeast-2:
+      HVM64: ami-0ea5eb4b05645aa8a
+    ap-northeast-3:
+      HVM64: ami-0ba140397329ef9ae
+    ap-east-1:
+      HVM64: ami-0d11fee2d69126ec1
+    ap-south-1:
+      HVM64: ami-0ecd7c3947c3e5de8
+    ap-southeast-1:
+      HVM64: ami-04ff9e9b51c1f62ca
+    ap-southeast-2:
+      HVM64: ami-0300dc03c13eb7660
+    ap-southeast-3:
+      HVM64: ami-00c5331644ad576ad
+    ca-central-1:
+      HVM64: ami-0665ce57d172e712e
+    eu-central-1:
+      HVM64: ami-0c9354388bb36c088
+    eu-west-1:
+      HVM64: ami-0d2a4a5d69e46ea0b
+    eu-west-2:
+      HVM64: ami-0bd2099338bc55e6d
+    eu-west-3:
+      HVM64: ami-0f7559f51d3a22167
+    eu-south-1:
+      HVM64: ami-0fbb3ea579c01e50b
+    eu-north-1:
+      HVM64: ami-012ae45a4a2d92750
+    sa-east-1:
+      HVM64: ami-0edc92075724775f7
+    us-east-1:
+      HVM64: ami-08d4ac5b634553e16
+    us-east-2:
+      HVM64: ami-0960ab670c8bb45f3
+    us-west-1:
+      HVM64: ami-01154c8b2e9a14885
+    us-west-2:
+      HVM64: ami-0ddf424f81ddb0720
+    me-south-1:
+      HVM64: ami-0b35873acba1a6ec3
+    af-south-1:
+      HVM64: ami-0ecd7c3947c3e5de8
+Resources:
+  WorkbenchInstance:
+    Type: AWS::EC2::Instance
+    Metadata:
+      AWS::CloudFormation::Authentication:
+        S3AccessCreds:
+          type: S3
+          roleName: !Ref IAMRoleName
+          buckets: !Ref QSS3BucketName
+      AWS::CloudFormation::Init:
+        config:
+          files:
+            /tmp/license-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/license-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/explorer-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/explorer-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/dashboard-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/dashboard-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/analytics-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/analytics-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/exchange-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/exchange-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/nebula-download:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/nebula-download'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/node-exporter-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/node-exporter-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+            /tmp/prometheus-install.sh:
+              source: !Sub 'https://${QSS3BucketName}.s3.${QSS3BucketRegion}.${AWS::URLSuffix}/${QSS3KeyPrefix}scripts/prometheus-install.sh'
+              mode: '000550'
+              owner: root
+              group: root
+          commands:
+            01-install-license:
+              cwd: '/tmp/'
+              command: !Sub 'sudo dos2unix *.sh; sudo bash license-install.sh "${LicenseLink}"'
+            02-install-explorer:
+              cwd: '/tmp/'
+              command: !Sub 'sudo dos2unix *.sh; sudo bash explorer-install.sh -l "${LicenseLink}"'
+            03-install-dashboard:
+              cwd: '/tmp/'
+              command: !Sub 'sudo dos2unix *.sh; sudo bash dashboard-install.sh -l "${LicenseLink}"'
+            04-install-exchange:
+              cwd: '/tmp/'
+              command: 'sudo dos2unix *.sh; sudo bash exchange-install.sh'
+            05-install-analytics:
+              cwd: '/tmp/'
+              command: 'sudo dos2unix *.sh; sudo bash analytics-install.sh'
+            06-install-node-exporter:
+              cwd: '/tmp/'
+              command: 'sudo dos2unix *.sh; sudo bash node-exporter-install.sh'
+            07-install-prometheus:
+              cwd: '/tmp/'
+              command: !Sub 'sudo dos2unix *.sh; sudo bash prometheus-install.sh -d ${DeploymentID} -r ${AWS::Region} -C ${IAMRoleArn}'
+    Properties:
+      KeyName: !Ref KeyPairName
+      InstanceType: !Ref InstanceType
+      ImageId: !FindInMap
+        - AWSRegionArch2AMI
+        - !Ref 'AWS::Region'
+        - HVM64
+      IamInstanceProfile: !Ref IAMProfileID
+      SubnetId: !Ref SubnetID
+      SecurityGroupIds:
+        - !Ref SecurityGroupID
+      BlockDeviceMappings:
+        - DeviceName: /dev/sda1
+          Ebs:
+            VolumeSize: '80'
+            VolumeType: gp2
+            DeleteOnTermination: true
+            Encrypted: true
+      Tags:
+        - Key: nebulagraph:cloud:deployment:id
+          Value: !Ref DeploymentID
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-Workbench
+        - Key: AppName
+          Value: 'NebulaTools'
+      UserData: !Base64
+        Fn::Sub: |
+          #!/bin/bash -xe
+
+          export PATH=$PATH:/usr/local/bin
+
+          cfn_fail()
+          {
+              cfn-signal -e 1 --stack ${AWS::StackId} --region ${AWS::Region} --resource WorkbenchInstance
+              exit 1
+          }
+
+          cfn_success()
+          {
+              cfn-signal -e 0 --stack ${AWS::StackId} --region ${AWS::Region} --resource WorkbenchInstance
+              exit 0
+          }
+          apt update -y
+          apt install git dos2unix -y
+          until git clone https://github.com/aws-quickstart/quickstart-linux-utilities.git ; do echo "Retrying"; done
+          cd quickstart-linux-utilities
+          source quickstart-cfn-tools.source
+          qs_update-os || qs_err
+          qs_bootstrap_pip || qs_err " pip bootstrap failed "
+          qs_aws-cfn-bootstrap || qs_err " cfn bootstrap failed "
+          cfn-init -v --stack ${AWS::StackId} --resource WorkbenchInstance --region ${AWS::Region} || cfn_fail
+          [ $(qs_status) == 0 ] && cfn_success || cfn_fail
+    CreationPolicy:
+      ResourceSignal:
+        Count: 1
+        Timeout: 'PT5M'
+Outputs:
+  InstanceID:
+    Description: ID of Workbench Instance
+    Value: !Ref WorkbenchInstance

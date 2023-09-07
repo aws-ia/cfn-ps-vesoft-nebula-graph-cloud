@@ -1,0 +1,261 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  This template creates a single AZ, subnet VPC infrastructure with
+  managed NAT gateway in the public subnet for the Availability Zone.
+  **WARNING** This template creates AWS resources. You will be billed for the
+  AWS resources used if you create a stack from this template. (qs-1qnnspaap)
+Metadata:
+  LICENSE: Apache License, Version 2.0
+  QuickStartDocumentation:
+    EntrypointName: Launch a new VPC
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Availability Zone configuration
+        Parameters:
+          - AvailabilityZone
+      - Label:
+          default: Network configuration
+        Parameters:
+          - VPCCIDR
+          - PublicSubnetCIDR
+    ParameterLabels:
+      AvailabilityZone:
+        default: Availability Zone
+      VPCCIDR:
+        default: VPC CIDR
+Parameters:
+  AvailabilityZone:
+    Type: AWS::EC2::AvailabilityZone::Name
+    Description: >-
+      Availability Zone to use for the subnets in the VPC. The
+      specified logical order is preserved.
+  PrivateSubnetCIDR:
+    Type: String
+    Description: >-
+      CIDR block for private subnet located in the Availability Zone.
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      CIDR block parameter must be in the form x.x.x.x/16-28.
+    Default: 10.0.0.0/19
+  PublicSubnetCIDR:
+    Type: String
+    Description: >-
+      CIDR block for the public DMZ subnet 1 located in Availability Zone 1.
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      CIDR block parameter must be in the form x.x.x.x/16-28.
+    Default: 10.0.128.0/20
+  VPCCIDR:
+    Type: String
+    Description: CIDR block for the VPC.
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: >-
+      CIDR block parameter must be in the form x.x.x.x/16-28.
+    Default: 10.0.0.0/16
+Conditions:
+  NVirginiaRegionCondition: !Equals [!Ref AWS::Region, us-east-1]
+Resources:
+  DHCPOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainName: !If [NVirginiaRegionCondition, ec2.internal, !Sub '${AWS::Region}.compute.internal']
+      DomainNameServers:
+        - AmazonProvidedDNS
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName} stack DHCPOptions
+        - Key: StackName
+          Value: !Ref AWS::StackName
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      InstanceTenancy: default
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+  VPCDHCPOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      VpcId: !Ref VPC
+      DhcpOptionsId: !Ref DHCPOptions
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Ref AWS::StackName
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+  PrivateSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PrivateSubnetCIDR
+      AvailabilityZone: !Ref AvailabilityZone
+      Tags:
+        - Key: Name
+          Value: Private subnet
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W33
+            reason: >-
+              (W33) EC2 Subnet should not have MapPublicIpOnLaunch set to true.
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: !Ref PublicSubnetCIDR
+      AvailabilityZone: !Ref AvailabilityZone
+      Tags:
+        - Key: Name
+          Value: Public subnet
+      MapPublicIpOnLaunch: true
+  PrivateSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Private subnet A
+        - Key: Network
+          Value: Private
+  PrivateSubnetRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NATGateway
+  PrivateSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnet
+      RouteTableId: !Ref PrivateSubnetRouteTable
+  PublicSubnetRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public Subnets
+        - Key: Network
+          Value: Public
+  PublicSubnetRoute:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicSubnetRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+  PublicSubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref PublicSubnetRouteTable
+  NATEIP:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: NATEIP
+  NATGateway:
+    DependsOn: VPCGatewayAttachment
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NATEIP.AllocationId
+      SubnetId: !Ref PublicSubnet
+      Tags:
+        - Key: Name
+          Value: NATGateway
+  S3VPCEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks:
+            - EIAMPolicyActionWildcard
+            - EPolicyWildcardPrincipal
+          ignore_reasons:
+            EIAMPolicyActionWildcard: >-
+              This is based on AWS documentation- filtering via bucket policy
+              is generally preferred.
+            EIAMPolicyWildcardResource: >-
+              This is based on AWS documentation- filtering via bucket policy
+              is generally preferred.
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: '*'
+            Effect: Allow
+            Resource: '*'
+            Principal: '*'
+      RouteTableIds:
+        - !Ref PrivateSubnetRouteTable
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcId: !Ref VPC
+Outputs:
+  NATEIP:
+    Description: NAT IP address.
+    Value: !Ref NATEIP
+    Export:
+      Name: !Sub ${AWS::StackName}-NATEIP
+  NATGatewayID:
+    Description: NATGateway ID.
+    Value: !Ref NATGateway
+    Export:
+      Name: !Sub ${AWS::StackName}-NATGateway
+  PrivateSubnetCIDR:
+    Description: Private subnet CIDR in the Availability Zone.
+    Value: !Ref PrivateSubnetCIDR
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnetCIDR
+  PrivateSubnetID:
+    Description: Private subnet ID in the Availability Zone.
+    Value: !Ref PrivateSubnet
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnetID
+  PrivateSubnetRouteTable:
+    Description: Private subnet route table.
+    Value: !Ref PrivateSubnetRouteTable
+    Export:
+      Name: !Sub ${AWS::StackName}-PrivateSubnetRouteTable
+  PublicSubnetCIDR:
+    Description: Public subnet CIDR in the Availability Zone.
+    Value: !Ref PublicSubnetCIDR
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnetCIDR
+  PublicSubnetID:
+    Description: Public subnet ID in the Availability Zone.
+    Value: !Ref PublicSubnet
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnetID
+  PublicSubnetRouteTable:
+    Description: Public subnet route table.
+    Value: !Ref PublicSubnetRouteTable
+    Export:
+      Name: !Sub ${AWS::StackName}-PublicSubnetRouteTable
+  S3VPCEndpoint:
+    Description: S3 VPC Endpoint.
+    Value: !Ref S3VPCEndpoint
+    Export:
+      Name: !Sub ${AWS::StackName}-S3VPCEndpoint
+  VPCCIDR:
+    Description: VPC CIDR.
+    Value: !Ref VPCCIDR
+    Export:
+      Name: !Sub ${AWS::StackName}-VPCCIDR
+  VPCID:
+    Description: VPC ID.
+    Value: !Ref VPC
+    Export:
+      Name: !Sub ${AWS::StackName}-VPCID
