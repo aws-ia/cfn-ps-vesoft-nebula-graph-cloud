@@ -1,0 +1,82 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: This template is used for setting up Meta nodes.(qs-1t9ums4ko)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+Parameters:
+  PrivateSubnet1ID:
+    Description: ID of existing private subnet 1 for the Meta nodes.
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet2ID:
+    Description: ID of existing private subnet 2 for the Meta nodes.
+    Type: AWS::EC2::Subnet::Id
+  PrivateSubnet3ID:
+    Description: ID of existing private subnet 3 for the Meta nodes.
+    Type: AWS::EC2::Subnet::Id
+  SecurityGroupID:
+    Description: ID of your existing SecurityGroup for deployment.
+    Type: AWS::EC2::SecurityGroup::Id
+  MetaNodeCount:
+    AllowedValues:
+      - 1
+      - 3
+    Default: 1
+    Description: Number of Meta nodes.
+    Type: Number
+Conditions:
+  3MetaNodesCondition: !Equals [!Ref MetaNodeCount, '3']
+Resources:
+  MetaNode1NetworkInterface:
+    Type: AWS::EC2::NetworkInterface
+    Properties:
+      Description: Network Interface for Meta Node 1
+      SubnetId: !Ref PrivateSubnet1ID
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: false
+  MetaNode2NetworkInterface:
+    Type: AWS::EC2::NetworkInterface
+    Condition: 3MetaNodesCondition
+    Properties:
+      Description: Network Interface for Meta Node 2
+      SubnetId: !Ref PrivateSubnet2ID
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: false
+  MetaNode3NetworkInterface:
+    Type: AWS::EC2::NetworkInterface
+    Condition: 3MetaNodesCondition
+    Properties:
+      Description: Network Interface for Meta Node 3
+      SubnetId: !Ref PrivateSubnet3ID
+      GroupSet:
+        - !Ref SecurityGroupID
+      SourceDestCheck: false
+Outputs:
+  NetworkInterface1ID:
+    Description: The ENI Physical ID of Meta Node 1
+    Value: !Ref MetaNode1NetworkInterface
+  NetworkInterface2ID:
+    Description: The ENI Physical ID of Meta Node 2
+    Value: !If
+      - 3MetaNodesCondition
+      - !Ref MetaNode2NetworkInterface
+      - ''
+  NetworkInterface3ID:
+    Description: The ENI Physical ID of Meta Node 3
+    Value: !If
+      - 3MetaNodesCondition
+      - !Ref MetaNode3NetworkInterface
+      - ''
+  MetaIPs:
+    Description: The private ip addresses of Meta nodes, seperated by comma ','
+    Value: !If
+      - 3MetaNodesCondition
+      - !Sub [ '${MetaAddress1},${MetaAddress2},${MetaAddress3}', { MetaAddress1: !GetAtt MetaNode1NetworkInterface.PrimaryPrivateIpAddress, MetaAddress2: !GetAtt MetaNode2NetworkInterface.PrimaryPrivateIpAddress, MetaAddress3: !GetAtt MetaNode3NetworkInterface.PrimaryPrivateIpAddress } ]
+      - !Sub [ '${MetaAddress}', { MetaAddress: !GetAtt MetaNode1NetworkInterface.PrimaryPrivateIpAddress } ]
+  MetaEndpoints:
+    Description: The endpoints of Meta nodes, seperated by comma ','
+    Value: !If
+      - 3MetaNodesCondition
+      - !Sub [ '${MetaAddress1}:9559,${MetaAddress2}:9559,${MetaAddress3}:9559', { MetaAddress1: !GetAtt MetaNode1NetworkInterface.PrimaryPrivateIpAddress, MetaAddress2: !GetAtt MetaNode2NetworkInterface.PrimaryPrivateIpAddress, MetaAddress3: !GetAtt MetaNode3NetworkInterface.PrimaryPrivateIpAddress } ]
+      - !Sub [ '${MetaAddress}:9559', { MetaAddress: !GetAtt MetaNode1NetworkInterface.PrimaryPrivateIpAddress } ]

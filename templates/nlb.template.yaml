@@ -1,0 +1,77 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: This stack deploys NLB for NebulaGraph cluster.(qs-1t9ums4m3)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+Parameters:
+  VPCID:
+    Description: VPC in which ELB will be placed.
+    Type: AWS::EC2::VPC::Id
+  Subnets:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets in which ELB will be created. Select all AZs/Subnet.
+  ExplorerPort:
+    Type: String
+    Description: Explorer portal port.
+  ExplorerInstanceID:
+    Type: String
+    Description: Explorer instance id.
+  DashboardPort:
+    Type: String
+    Description: Dashboard portal port.
+  DashboardInstanceID:
+    Type: String
+    Description: Dashboard instance id.
+Resources:
+  ServiceLoadBalancerPublic:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets: !Ref Subnets
+      Type: network
+      IpAddressType: ipv4
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: "true"
+      Tags:
+      - Key: Name
+        Value: !Sub ${AWS::StackName}-nlb
+  ExplorerTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: !Ref ExplorerPort
+      Protocol: TCP
+      VpcId: !Ref VPCID
+      Targets:
+      - Id: !Ref ExplorerInstanceID
+        Port: !Ref ExplorerPort
+  ExplorerListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ServiceLoadBalancerPublic
+      Port: !Ref ExplorerPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref ExplorerTargetGroup
+  DashboardTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Port: !Ref DashboardPort
+      Protocol: TCP
+      VpcId: !Ref VPCID
+      Targets:
+        - Id: !Ref DashboardInstanceID
+          Port: !Ref DashboardPort
+  DashboardListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ServiceLoadBalancerPublic
+      Port: !Ref DashboardPort
+      Protocol: TCP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref DashboardTargetGroup
+Outputs:
+  ElbDNSName:
+    Value: !GetAtt ServiceLoadBalancerPublic.DNSName

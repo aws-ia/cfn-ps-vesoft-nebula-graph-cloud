@@ -1,0 +1,46 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: This template is used for setting up Security Groups rules. (qs-1t9ums4k9)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Security Groups configuration
+        Parameters:
+          - SecurityGroupID
+    ParameterLabels:
+      SecurityGroupID:
+        default: Security group ID
+      AccessCIDR:
+        default: Access CIDR
+Parameters:
+  SecurityGroupID:
+    Description: The associated SecurityGroupID.
+    Type: AWS::EC2::SecurityGroup::Id
+  AccessCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    ConstraintDescription: Must be a valid IP range in the form x.x.x.x/x.
+    Description: "CIDR IP range permitted for access. A value of
+      0.0.0.0/0 allows access from any IP address."
+    Type: String
+Resources:
+  SecurityGroupIngressDashboard:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow NebulaGraph Dashboard port inbound communications from access CIDR
+      GroupId: !Ref SecurityGroupID
+      IpProtocol: tcp
+      FromPort: 7002
+      ToPort: 7002
+      CidrIp: !Ref AccessCIDR
+  SecurityGroupIngressExplorer:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Allow NebulaGraph Explorer port inbound communications from access CIDR
+      GroupId: !Ref SecurityGroupID
+      IpProtocol: tcp
+      FromPort: 7005
+      ToPort: 7005
+      CidrIp: !Ref AccessCIDR
